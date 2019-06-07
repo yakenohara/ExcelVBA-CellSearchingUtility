@@ -210,8 +210,6 @@ Public Function matchedCellInSheet(ByVal keyWord As Variant, ByVal inThisSheet A
             SearchFormat:=False _
         )
         
-        Set xxx = searchFromThisSheet.UsedRange
-        
         If (foundobj Is Nothing) Then 'Œ©‚Â‚©‚ç‚È‚©‚Á‚½ê‡
             ret = CVErr(xlErrNA) '#N/A‚ğ•Ô‹p
         Else 'Œ©‚Â‚©‚Á‚½ê‡
@@ -246,4 +244,3 @@ NOT_FOUND: ' ƒV[ƒg‚ª‘¶İ‚µ‚È‚¢ê‡
     Exit Function
     
 End Function
-
