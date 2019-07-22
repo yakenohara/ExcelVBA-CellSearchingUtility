@@ -178,6 +178,139 @@ Public Function matchedCellInSheet(ByVal keyWord As Variant, ByVal inThisSheet A
     
 End Function
 
+'
+' ThisWorkbook 内の指定シートからシェイプを検索して、
+' 見つかったかどうかを Bool で返す
+'
+' ## Parameters
+'
+'  - keyWord
+'     セル検索キーワード
+'  - inThisSheet
+'     検索対象シート
+'     数値型で指定した場合はシート番号(1 based)
+'     文字列型で指定した場合はシート名として扱われる
+'
+' ## Returns
+'
+'  最初に見つかったかどうかの Bool 値
+'  エラー時は以下を返却する
+'
+'  - #NUM!
+'     検索対象シートが存在しない場合
+'  - #VALUE!
+'     検索対象シートの指定引数 `inThisSheet` に
+'     文字列型でも数値型でもない型で値が指定されている
+'
+Public Function isThereMatchedShapeInSheet(ByVal keyWord As String, ByVal inThisSheet As Variant)
+    
+    Dim ret As Variant '返却値
+    Dim primitiveKeyword As Variant
+    Dim primitiveSheetName As Variant '検索対象シートを指定する為の引数
+    Dim searchFromThisSheet As Variant  '検索対象シート
+    Dim foundCell As Range
+    
+    'Range.Value2 method 相当の操作で 検索キーワードを取得
+    primitiveKeyword = keyWord
+    
+    'Range.Value2 method 相当の操作で シート名を取得
+    primitiveSheetName = getValue2(inThisSheet)
+    
+    '検索対象シートの設定
+    Set searchFromThisSheet = Nothing '検索対象シートが無い状態を設定(エラ検出の為)
+    Select Case (TypeName(primitiveSheetName))
+        
+        Case "String" 'シート名指定の場合
+        
+            Set searchFromThisSheet = getSheetObjFromString(primitiveSheetName)
+            
+            If searchFromThisSheet Is Nothing Then
+                ret = CVErr(xlErrNum) '#NUM! を返す
+            End If
+        
+        Case "Double" 'Index No(1 based) 指定の場合
+        
+            'ワークシート数チェック
+            If (primitiveSheetName <= ThisWorkbook.Worksheets.Count) Then '存在するワークシート数の範囲内の場合
+                Set searchFromThisSheet = ThisWorkbook.Worksheets(primitiveSheetName)
+            
+            Else '存在するワークシート数の範囲外の場合
+                ret = CVErr(xlErrNum) '#NUM! を返す
+                
+            End If
+        
+        Case Else '不明型の場合
+            ret = CVErr(xlErrValue) '#VALUE! を返す
+            
+    End Select
+    
+    If Not (searchFromThisSheet Is Nothing) Then '検索対象シートがある場合
+        '検索
+        Set ret = searchShapeString(searchFromThisSheet.Shapes, primitiveKeyword)
+        
+        If ret Is Nothing Then '見つからなかった時
+            ret = False
+        
+        Else '見つかった時
+            ret = True
+            
+        End If
+        
+    End If
+    
+    '返却値を格納して終了
+    If IsObject(ret) Then
+        Set isThereMatchedShapeInSheet = ret
+    Else
+        isThereMatchedShapeInSheet = ret
+    End If
+    
+End Function
+
+'
+'Shapes 内の Shepe で、テキストが一致した最初の Shape を返す
+'見つからなかった時は、 Nothing を返す
+'
+Private Function searchShapeString(ByVal sps As Object, ByVal txt As String) As Variant
+
+    Dim sp  As Shape
+    Dim s   As String
+    Dim ret As Variant
+    Dim pos As Long
+
+    Set ret = Nothing
+    For Each sp In sps
+        If (sp.Type = msoGroup) Then
+            Set ret = searchShapeString(sp.GroupItems, txt)
+            If Not (ret Is Nothing) Then
+                GoTo ExitFunction
+            End If
+
+        ElseIf (sp.Type = msoComment) Then
+            GoTo CONTINUE
+
+'TextFrame2を持たないShapeがあれば以下のように除外する
+'        ElseIf (sp.Type = msoGraphic) Then
+'            GoTo CONTINUE
+
+        Else
+            If (sp.TextFrame2.HasText = msoTrue) Then
+                If (sp.TextFrame2.TextRange.Text = txt) Then ' 見つかった時
+                    Set ret = sp
+                    GoTo ExitFunction
+                
+                End If
+                
+            End If
+        End If
+CONTINUE:
+    Next
+
+ExitFunction:
+    Set searchShapeString = ret
+
+End Function
+
 '<Common>------------------------------------------------------------------------------------------------------------------------
 
 '
